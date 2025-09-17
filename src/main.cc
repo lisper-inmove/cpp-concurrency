@@ -5,26 +5,44 @@
 #include <algorithm>
 #include <thread>
 #include <memory>
+#include <queue>
+#include <condition_variable>
+#include <chrono>
 
 using namespace std;
 
-shared_ptr<int> resource_ptr;
-once_flag resource_flag;
+mutex mut;
+std::queue<int> data_queue;
+condition_variable data_cond;
 
-void init_resource() {
-    resource_ptr.reset(new int(10));
-    cout << "init resource called: " << std::this_thread::get_id() << endl;
+void data_preparation_thread() {
+    this_thread::sleep_for(chrono::milliseconds(5000));
+    {
+        lock_guard lk(mut);
+        data_queue.push(1000);
+    }
+    cout << "Put data to queue: " << std::this_thread::get_id() << endl;
+    data_cond.notify_one();
 }
 
-void test001() {
-    cout << "Current thread: " << std::this_thread::get_id() << endl;
-    call_once(resource_flag, init_resource);
+void data_processing_thread() {
+    while (true) {
+        unique_lock lk(mut);
+        cout << "Before Wait: " << std::this_thread::get_id() << endl;
+        data_cond.wait(lk, [] { return !data_queue.empty(); });
+        cout << "After Wait: " << std::this_thread::get_id() << endl;
+        int data = data_queue.front();
+        data_queue.pop();
+        lk.unlock();
+        // do something
+        break;
+    }
 }
 
 int main() {
     // test001();
-    thread t1(test001);
-    thread t2(test001);
+    thread t1(data_preparation_thread);
+    thread t2(data_processing_thread);
     t1.join();
     t2.join();
     return 0;
