@@ -4,34 +4,28 @@
 #include <list>
 #include <algorithm>
 #include <thread>
+#include <memory>
 
 using namespace std;
 
-std::list<int> some_list;
-std::mutex some_mutex;
+shared_ptr<int> resource_ptr;
+once_flag resource_flag;
 
-void add_to_list(int new_value) {
-    std::lock_guard<std::mutex> guard(some_mutex);
-    some_list.push_back(new_value);
-}
-
-bool list_contains(int value_to_find) {
-    // std::lock_guard<std::mutex> guard(some_mutex);
-    std::lock_guard guard(some_mutex);
-    bool flag = std::find(some_list.begin(), some_list.end(), value_to_find) != some_list.end();
-    std::cout << "find value result: " << flag << std::endl;
-    return flag;
+void init_resource() {
+    resource_ptr.reset(new int(10));
+    cout << "init resource called: " << std::this_thread::get_id() << endl;
 }
 
 void test001() {
-    std::thread t1(add_to_list, 3);
-    std::thread t2(list_contains, 3);
-
-    t2.join();
-    t1.join();
+    cout << "Current thread: " << std::this_thread::get_id() << endl;
+    call_once(resource_flag, init_resource);
 }
 
 int main() {
-    test001();
+    // test001();
+    thread t1(test001);
+    thread t2(test001);
+    t1.join();
+    t2.join();
     return 0;
 }
