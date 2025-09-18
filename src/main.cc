@@ -5,17 +5,18 @@
 
 using namespace std;
 
-int compute_square(int x) {
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    return x * x;
+void worker(std::promise<int> prom) {
+    cout << "Worker thread calculating...\n";
+    prom.set_value(42);
 }
 
 int main() {
-    cout << "Starting async task ...\n";
-    std::future<int> result = std::async(std::launch::async, compute_square, 10);
-    cout << "Doing something else while waiting...\n";
-
-    int value = result.get();  // Waits until the computation finishes
-    cout << "Result: " << value << "\n";
+    std::promise<int> prom;
+    std::future<int> fut = prom.get_future();
+    std::thread t(worker, std::move(prom));
+    cout << "Main thread waiting...\n";
+    int value = fut.get();  // blocks until worker set the value
+    cout << "Get value: " << value << "\n";
+    t.join();
     return 0;
 }
