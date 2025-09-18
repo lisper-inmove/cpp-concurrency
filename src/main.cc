@@ -5,18 +5,26 @@
 
 using namespace std;
 
-void worker(std::promise<int> prom) {
-    cout << "Worker thread calculating...\n";
-    prom.set_value(42);
+/**
+
+   std::async
+   policy: 默认值为 std::launch::async | std::launch::deferred，由实现自行决定
+       std::launch::async: 新线程里立即执行
+       std::launch::deferred: 直到future.get 或 future.wait时才执行
+
+ */
+
+int compute_square(int x) {
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    return x * x;
 }
 
 int main() {
-    std::promise<int> prom;
-    std::future<int> fut = prom.get_future();
-    std::thread t(worker, std::move(prom));
-    cout << "Main thread waiting...\n";
-    int value = fut.get();  // blocks until worker set the value
-    cout << "Get value: " << value << "\n";
-    t.join();
+    cout << "Starting async task ...\n";
+    std::future<int> result = std::async(std::launch::async, compute_square, 10);
+    cout << "Doing something else while waiting...\n";
+
+    int value = result.get();  // Waits until the computation finishes
+    cout << "Result: " << value << "\n";
     return 0;
 }
